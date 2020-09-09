@@ -6,6 +6,9 @@
  */
 
 #include "sm.h"
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
 // Use this function to any initialisation if you need to.
 void sm_init(void) {
@@ -17,6 +20,11 @@ void sm_free(void) {
 
 // Exercise 1a/2: start services
 void sm_start(const char *processes[]) {
+	//int n = sizeof(processes);
+	//char* args = malloc((n - 1) * sizeof(char));
+	//// copy n-1 char worth of memory from the 2nd item in array onwards.
+	//memcpy(args, &processes[1], (n - 1) * sizeof(char));
+	execv(processes[0], processes);
 }
 
 // Exercise 1b: print service status

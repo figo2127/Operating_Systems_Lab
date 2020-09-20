@@ -104,8 +104,8 @@ static bool handle_command(const size_t num_tokens, char ***tokensp) {
     size_t service_number;
     SCAN_SERVICE_NUMBER(service_number);
     sm_stop(service_number);
-  } else if (strcmp(cmd, "status") == 0) {
-    sm_status_t statuses[SM_MAX_SERVICES] = {0};
+  } else if (strcmp(cmd, "status") == 0) { // if cmd wants "status" 
+    sm_status_t statuses[SM_MAX_SERVICES] = {0}; // SM_MAX_SERVICES = 32
     size_t num_services = sm_status(statuses);
     for (size_t i = 0; i < num_services; ++i) {
       sm_status_t *status = statuses + i;

@@ -22,7 +22,7 @@ void barrier_init(barrier_t* barrier, int count) {
     sem_init(barrier->join_semaphore, 0, 0);
 }
 
-void barrier_wait_1(barrier_t* barrier) {
+void wait_barr_one(barrier_t* barrier) {
     sem_wait(barrier->mutex); //If the value of the semaphore is negative,
                               //the calling process blocks;
                               //one of the blocked processes wakes up when another process calls sem_post.
@@ -38,7 +38,7 @@ void barrier_wait_1(barrier_t* barrier) {
     sem_wait(barrier->reach_semaphore); //threads wait here if barrier is not full yet.
 }
 
-void barrier_wait_2(barrier_t* barrier) {
+void wait_barr_two(barrier_t* barrier) {
     sem_wait(barrier->mutex);
 
     //start of CS
@@ -55,8 +55,8 @@ void barrier_wait_2(barrier_t* barrier) {
 }
 
 void barrier_wait(barrier_t* barrier) {
-    barrier_wait_1(barrier);
-    barrier_wait_2(barrier);
+    wait_barr_one(barrier);
+    wait_barr_two(barrier);
 }
 
 

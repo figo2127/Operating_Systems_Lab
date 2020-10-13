@@ -8,17 +8,27 @@
 #define __CS2106_ENTRY_CONTROLLER_H_
 
 #include <semaphore.h>
+#include <pthread.h>
 
 #define ENTRY_CONTROLLER_MAX_USES 5000 // we impose a limit on the number of uses we can
                                        // have
+//#define MAX 5000
 
 typedef struct entry_controller {
     // define your variables here
+    int front;
+    int back;
+    int trainCount;
+    sem_t loadingBay;
+    sem_t mutex;
+    sem_t trainsOfSemsARR[ENTRY_CONTROLLER_MAX_USES]; //basically the queue used to store all the trains
 } entry_controller_t;
 
 void entry_controller_init( entry_controller_t *entry_controller, int loading_bays );
 void entry_controller_wait( entry_controller_t *entry_controller );
 void entry_controller_post( entry_controller_t *entry_controller );
 void entry_controller_destroy( entry_controller_t *entry_controller );
+void addToWaitingTrains(sem_t data, entry_controller_t* entry_controller);
+sem_t pollTrain(entry_controller_t* entry_controller);
 
 #endif // __CS2106_ENTRY_CONTROLLER_H_

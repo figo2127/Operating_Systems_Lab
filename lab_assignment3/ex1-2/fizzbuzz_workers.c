@@ -21,7 +21,7 @@ void fizzbuzz_init(int n) {
     barrier = malloc(sizeof(barrier_t));
     ensure_successful_malloc(barrier);
     barrier_init(barrier, 4); //we need 4 because there are in total 4 cases,
-                               //and always one of them will trigger the if statement
+                              //and always one of them will trigger the if statement
     num_threads = n;
 }
 

@@ -38,15 +38,15 @@ void wait_barr_one(barrier_t* barrier) {
     sem_wait(barrier->reach_semaphore); //threads wait here if barrier is not full yet.
 }
 
-void wait_barr_two(barrier_t* barrier) {
+void wait_barr_two(barrier_t* barrier) { //makes sure barrier is reusable
     sem_wait(barrier->mutex);
 
     //start of CS
     //int x = barrier->count;
-    barrier->count = barrier->count + 1;
+    barrier->count = barrier->count + 1; //recover the barrier to initialization state
     if (barrier->count == barrier->n) {
         for (int i = 0; i < barrier->n; i++)
-            sem_post(barrier->join_semaphore);
+            sem_post(barrier->join_semaphore); 
     }
     //end of CS
     sem_post(barrier->mutex);
@@ -63,29 +63,29 @@ void barrier_wait(barrier_t* barrier) {
 
 // Perform cleanup here if you need to
 void barrier_destroy(barrier_t* barrier) {
-    /*sem_destroy(barrier->mutex);
+    sem_destroy(barrier->mutex);
     free(barrier->mutex);
 
     sem_destroy(barrier->reach_semaphore);
     free(barrier->reach_semaphore);
 
     sem_destroy(barrier->join_semaphore);
-    free(barrier->join_semaphore);*/
+    free(barrier->join_semaphore);
 
-    sem_destroy(barrier->mutex);
-    if (barrier->mutex != NULL)
-        free(barrier->mutex); //free the dynamically allocateed memory
-    barrier->mutex = NULL;
+    //sem_destroy(barrier->mutex);
+    //if (barrier->mutex != NULL)
+    //    free(barrier->mutex); //free the dynamically allocateed memory
+    //barrier->mutex = NULL;
 
-    sem_destroy(barrier->reach_semaphore);
-    if (barrier->reach_semaphore != NULL)
-        free(barrier->reach_semaphore);
-    barrier->reach_semaphore = NULL;
+    //sem_destroy(barrier->reach_semaphore);
+    //if (barrier->reach_semaphore != NULL)
+    //    free(barrier->reach_semaphore);
+    //barrier->reach_semaphore = NULL;
 
-    sem_destroy(barrier->join_semaphore);
-    if (barrier->join_semaphore != NULL)
-        free(barrier->join_semaphore);
-    barrier->join_semaphore = NULL;
+    //sem_destroy(barrier->join_semaphore);
+    //if (barrier->join_semaphore != NULL)
+    //    free(barrier->join_semaphore);
+    //barrier->join_semaphore = NULL;
 }
 
 

@@ -5,33 +5,37 @@
 * Lab Group:
 *************************************/
 
-
-
-#include <stdlib.h>
+#include "mmf.h"
 #include <unistd.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
+#include <sys/mman.h>
 
-#include "mmf.h"
+
 
 void* mmf_create_or_open(const char* name, size_t sz) {
     /* TODO */
-    int fd = open(name, O_RDWR | O_CREAT, 0777);
+    //create or open the file (open)
+    //O_EXCL
+    int fd = open(name, O_CREAT | O_TRUNC | O_RDWR, 0666);
     if (fd == -1) {
-        perror("mmf_create_or_open open file descriptor error");
+        perror("create or open file descriptor error");
         exit(1);
     }
+
+    //resize the file to desired size (ftruncate)
     ftruncate(fd, sz);
-    char* mmf = mmap(NULL, sz, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_SHARED, fd, 0);
+
+    //map the file into memory    
+    //void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+    char* data = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
     close(fd);
-    return mmf;
+    return data;
 }
 
-void mmf_close(void* ptr, size_t sz) {
+void mmf_close(void *ptr, size_t sz) {
     /* TODO */
+    //unmap files
     munmap(ptr, sz);
 }

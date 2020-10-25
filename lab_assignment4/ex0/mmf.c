@@ -7,12 +7,13 @@
 
 #include "mmf.h"
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-
-
 
 void* mmf_create_or_open(const char* name, size_t sz) {
     /* TODO */

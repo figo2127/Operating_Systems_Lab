@@ -18,8 +18,18 @@ structs to typedefs, as long as the functions satisfy the
 requirements in the lab document.  If you declare additional names (helper structs or helper functions), they should be prefixed with "shmheap_" to avoid potential name clashes.
 */
 
-typedef struct {} shmheap_memory_handle;
-typedef struct {} shmheap_object_handle;
+typedef struct {
+    char* name;
+    void* start_ptr;
+    void* curr_ptr;
+    size_t size;
+    int fd;
+} shmheap_memory_handle;
+typedef struct {
+    size_t offset;
+} shmheap_object_handle;
+
+
 
 
 /*

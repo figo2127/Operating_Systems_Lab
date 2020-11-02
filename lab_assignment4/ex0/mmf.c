@@ -26,6 +26,8 @@ void* mmf_create_or_open(const char* name, size_t sz) {
     }
 
     //resize the file to desired size (ftruncate)
+    //The truncate() and ftruncate() functions cause the regular file
+    //named by path or referenced by fd to be truncated to a size of precisely length bytes.
     ftruncate(fd, sz);
 
     //map the file into memory    

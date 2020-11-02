@@ -17,27 +17,33 @@
 #include "shmheap.h"
 
 size_t heap_size;
+//For ex1, you just need to return a pointer to the allocated space in the shared heap.
+//Once returned, the runner can use this allocated space in the same way you would use
+//the space allocated by malloc, for example.
+//To transform this pointer into an object handle, the runner calls shmheap_ptr_to_handle.
+//This object handle can be transferred among processes.Hence you need to find a way to
+//make the object handle independent of the memory space of a specific process
 
 shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     /* TODO */
     heap_size = len;
-    int fd = shm_open(name, O_CREAT | O_RDWR, 0777);
+    int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
         perror("shmheap_create shm_open error\n");
         exit(1);
     }
     ftruncate(fd, len);
-    void* mmf = mmap(NULL, len, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_SHARED, fd, 0);
+    void* mmf = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED_VALIDATE, fd, 0); //Memory mapped file
     close(fd);
-    shmheap_memory_handle res;
     char* temp = (char*)malloc(sizeof(char) * strlen(name));
     strcpy(temp, name);
+    shmheap_memory_handle res;
     res.name = temp;
     res.start_ptr = mmf;
     res.curr_ptr = mmf;
     res.size = len;
     res.fd = fd;
-    printf("create: healp size: %ld, start addr: %p\n", heap_size, res.start_ptr);
+    printf("create: heap size: %ld, start addr: %p\n", heap_size, res.start_ptr);
     return res;
 }
 
@@ -47,12 +53,12 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     shmheap_memory_handle mem;
     char* temp = (char*)malloc(sizeof(char) * strlen(name));
     strcpy(temp, name);
-    int fd = shm_open(name, O_RDWR, 0777);
+    int fd = shm_open(name, O_RDWR, 0666);
     if (fstat(fd, &sb) == -1) {
         perror("fstat in connect");
         exit(EXIT_FAILURE);
     }
-    void* ptr = mmap(NULL, sb.st_size, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_SHARED, fd, 0);
+    void* ptr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
     mem.name = temp;
     mem.size = sb.st_size;
     mem.start_ptr = ptr;

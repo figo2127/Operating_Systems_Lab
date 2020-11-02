@@ -24,6 +24,11 @@ size_t heap_size;
 //This object handle can be transferred among processes.Hence you need to find a way to
 //make the object handle independent of the memory space of a specific process
 
+
+
+
+//order:
+//shmheap_create -> shmheap_alloc -> shmheap_ptr_to_handle -> shmheap_destroy
 shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     /* TODO */
     heap_size = len;
@@ -86,11 +91,14 @@ void* shmheap_underlying(shmheap_memory_handle mem) {
     /* TODO */
 }
 
+//the shmheap_memory_handle is first created by shmheap_create, then passed to shmheap_alloc
 void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) {
     /* TODO */
-    printf("in alloc\n");
-    void* res = mem.curr_ptr;
-    mem.curr_ptr += sz;
+    printf("allocating...\n");
+    void* res = mem.curr_ptr; //create a pointer here
+    printf("pointer at: %p\n", res);
+    //allocates an object of given size on the given shared heap, returns a pointer to the object that was allocated.
+    mem.curr_ptr += sz; //advances the curr_ptr of mem by sz units
     printf("alloc address: %p curr_ptr: %p\n", res, mem.curr_ptr);
     return res;
 }

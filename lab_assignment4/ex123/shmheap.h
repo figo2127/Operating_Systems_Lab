@@ -18,6 +18,10 @@ structs to typedefs, as long as the functions satisfy the
 requirements in the lab document.  If you declare additional names (helper structs or helper functions), they should be prefixed with "shmheap_" to avoid potential name clashes.
 */
 
+#define MAX_FIRST_BOOK_KEEPING_SIZE = 80;
+#define SUBSEQ_MAX = 16;
+
+//consistent size
 typedef struct { //16 bytes
     int occupied; //status
     int last_header;
@@ -25,8 +29,7 @@ typedef struct { //16 bytes
     int prev_sz; 
 } book_keeper;
 
-typedef struct {
-    //char* name;
+typedef struct { //maximum 80 bytes
     size_t total_size;
     size_t used_space;
     void* baseaddr;

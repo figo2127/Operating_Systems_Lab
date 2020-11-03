@@ -46,7 +46,7 @@ shmheap_memory_handle shmheap_create(const char* name, size_t len) {
         perror("get info error");
         exit(1);
     }
-    void* mmf = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED_VALIDATE, fd, 0); //Memory mapped file
+    void* mmf = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0); //Memory mapped file
     if (mmf == MAP_FAILED) {
         perror("map files failed");
     }
@@ -85,12 +85,12 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     int fd = shm_open(name, O_RDWR, 0666);
     if (fstat(fd, &sb) == -1) {
         perror("fstat in connect");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     void* ptr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED) {
         perror("mmap failure");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     mem = ptr;
     /*mem.name = temp;
@@ -108,7 +108,8 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
     shmheap_memory_handle* hdlptr = &mem;
 
     sem_wait(&(hdlptr->shmheap_mutex));
-    if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
+    //CS
+    if (munmap(&hdlptr, sizeof(shmheap_memory_handle)) == -1) {
         perror("delete mappings failed");
         exit(1);
     }

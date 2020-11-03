@@ -112,10 +112,10 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
 
 void* shmheap_underlying(shmheap_memory_handle mem) {
     /* TODO */
-    shmheap_memory_handle* hdlptr = &mem;
-    sem_wait(&(hdlptr->shmheap_mutex));
-    //printf("Base address(shmheap) = %p\n", mem.baseaddr);
-    sem_post(&(hdlptr->shmheap_mutex));
+    //shmheap_memory_handle* hdlptr = &mem;
+    //sem_wait(&(hdlptr->shmheap_mutex));
+    ////printf("Base address(shmheap) = %p\n", mem.baseaddr);
+    //sem_post(&(hdlptr->shmheap_mutex));
     return mem.baseaddr;
 
     //return &mem;
@@ -124,7 +124,7 @@ void* shmheap_underlying(shmheap_memory_handle mem) {
 void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return base address from mem
     /* TODO */
     //sem_wait(&shmheap_mutex);
-    shmheap_memory_handle* hdlptr = (shmheap_memory_handle*)mem.baseaddr;
+    shmheap_memory_handle* hdlptr = shmheap_underlying(mem);
     sem_wait(&(hdlptr->shmheap_mutex));
     if (sz % 8 != 0) {
         sz = ((sz + 7) & (-8));
@@ -132,7 +132,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
     shmheap_header* init = (shmheap_header*)((char*)mem.baseaddr + (size_t)mem.init_offset);
 
 
-    while (true) {
+    while (1) {
         if ((size_t)init->sz == hdlptr->total_size) { //empty heap
             init->occupied = 1;
             init->sz = (int)sz;

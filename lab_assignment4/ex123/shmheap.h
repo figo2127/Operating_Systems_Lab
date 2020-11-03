@@ -37,7 +37,7 @@ requirements in the lab document.  If you declare additional names (helper struc
 //consistent size
 typedef struct { //16 bytes
     int occupied; //status
-    int last_header;
+    int bk_prev;
     int sz;
     int prev_sz; 
 } book_keeper;

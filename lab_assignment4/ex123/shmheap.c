@@ -20,6 +20,7 @@ sem_t mutex;
 
 //order:
 //shmheap_create -> shmheap_connect -> shmheap_alloc -> shmheap_ptr_to_handle -> shmheap_destroy
+
 shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     /* TODO */
     struct stat info;

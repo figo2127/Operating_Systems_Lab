@@ -59,29 +59,28 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     /* TODO */
     //sem_wait(&shmheap_mutex);
     struct stat info;
-    int fd = shm_open(name, O_RDWR, 0666);
+    //grant read permission, write permission
+    int fd = shm_open(name, O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
-        perror("shm_open");
+        perror("shm_open error");
     }
     //get size of shared memory
     if (fstat(fd, &info) == -1) {
         perror("fstat in connect");
         //exit(1);
     }
-    
+
     //map the shared memory
-    void* ptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
+    void* ptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED) {
         perror("mmap failure");
+        //exit(1);
     }
     shmheap_memory_handle* hdlptr = ptr;
-    //printf("%s %p\n", "memory handle base address is (connect)", hdlptr);
-    //sem_post(&shmheap_mutex);
+  
     //printf("connect: heap size: %ld, start addr: %p\n", info.st_size, ptr);
 
     return *hdlptr;
-
-
 }
 
 void shmheap_disconnect(shmheap_memory_handle mem) {

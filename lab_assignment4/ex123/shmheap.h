@@ -30,11 +30,11 @@ typedef struct { //16 bytes
 } book_keeper;
 
 typedef struct { //maximum 80 bytes
+    sem_t shmheap_mutex;
     size_t total_size;
     size_t used_space;
     void* baseaddr;
     size_t init_offset;
-    sem_t shmheap_mutex;
     //sem_t shm_mutex;
     /*void* start_ptr;
     void* curr_ptr;*/

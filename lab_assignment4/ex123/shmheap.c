@@ -105,15 +105,15 @@ shmheap_memory_handle shmheap_connect(const char* name) {
 void shmheap_disconnect(shmheap_memory_handle mem) {
     /* TODO */
     //can straight away pass the address of mem into sem_wait via &mem
-    shmheap_memory_handle* hdlptr = &mem;
+    //shmheap_memory_handle* hdlptr = &mem;
 
-    sem_wait(&(hdlptr->shmheap_mutex));
+    sem_wait(&(mem->shmheap_mutex));
     //CS
-    if (munmap(&hdlptr, sizeof(shmheap_memory_handle)) == -1) {
+    if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
         perror("delete mappings failed");
         exit(1);
     }
-    sem_post(&(hdlptr->shmheap_mutex));
+    sem_post(&(mem->shmheap_mutex));
 
 
     /*
@@ -124,9 +124,9 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
 
 void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
     /* TODO */
-    shmheap_memory_handle* hdlptr = &mem;
+    //shmheap_memory_handle* hdlptr = &mem;
 
-    sem_destroy(&(hdlptr->shmheap_mutex));
+    sem_destroy(&(mem->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
         perror("delete mappings failed");
         exit(1);
@@ -137,10 +137,10 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
 
 void* shmheap_underlying(shmheap_memory_handle mem) {
     /* TODO */
-    shmheap_memory_handle* hdlptr = &mem;
-    sem_wait(&(hdlptr->shmheap_mutex));
-    //printf("Base address(shmheap) = %p\n", mem.baseaddr);
-    sem_post(&(hdlptr->shmheap_mutex));
+    //shmheap_memory_handle* hdlptr = &mem;
+    sem_wait(&(mem->shmheap_mutex));
+    printf("Base address(shmheap) = %p\n", mem.baseaddr);
+    sem_post(&(mem->shmheap_mutex));
     return mem.baseaddr;
 }
 

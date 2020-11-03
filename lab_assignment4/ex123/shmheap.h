@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <semaphore.h>
 #include <stdio.h> 
+#include <stdbool.h>
 #include <stdlib.h> 
 #include <unistd.h>
 #include <fcntl.h> 
@@ -36,10 +37,10 @@ requirements in the lab document.  If you declare additional names (helper struc
 //consistent size
 typedef struct { //16 bytes
     int occupied; //status
-    int last_book_keeper;
+    int last_header;
     int sz;
     int prev_sz; 
-} book_keeper;
+} shmheap_header;
 
 typedef struct { //maximum 80 bytes
     int init_offset;

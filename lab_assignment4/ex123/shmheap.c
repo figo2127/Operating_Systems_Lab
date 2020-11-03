@@ -110,7 +110,7 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
     sem_wait(&(hdlptr->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
         perror("delete mappings failed");
-        exit(1);
+        //exit(1);
     }
     sem_post(&(hdlptr->shmheap_mutex));
 

@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <semaphore.h>
 #include <stdio.h> 
-#include <stdbool.h>
 #include <stdlib.h> 
 #include <unistd.h>
 #include <fcntl.h> 
@@ -41,7 +40,7 @@ typedef struct { //16 bytes
     int last_header;
     int sz;
     int prev_sz; 
-} shmheap_header;
+} book_keeper;
 
 typedef struct { //maximum 80 bytes
     int init_offset;
@@ -50,7 +49,6 @@ typedef struct { //maximum 80 bytes
     size_t used_space;
     sem_t shmheap_mutex;
     void* baseaddr;
-    //size_t init_offset;
     //sem_t shm_mutex;
     /*void* start_ptr;
     void* curr_ptr;*/
@@ -81,3 +79,6 @@ void *shmheap_alloc(shmheap_memory_handle mem, size_t sz);
 void shmheap_free(shmheap_memory_handle mem, void *ptr);
 shmheap_object_handle shmheap_ptr_to_handle(shmheap_memory_handle mem, void *ptr);
 void *shmheap_handle_to_ptr(shmheap_memory_handle mem, shmheap_object_handle hdl);
+
+//helpers
+size_t ensure_eightbyte_aligned(size_t sz);

@@ -22,36 +22,32 @@ sem_t mutex;
 //shmheap_create -> shmheap_connect -> shmheap_alloc -> shmheap_ptr_to_handle -> shmheap_destroy
 shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     /* TODO */
-    shmheap_memory_handle* hdlptr; //possible to just make struct not pointer
-    int fd;
-    struct stat sb;
-
-
-    //create a shm, map it and return the struct containing the pointer
-
-    //open the shared memory 
-    fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (fd == -1)
-    {
-        perror("shm_open");
+    struct stat info;
+    int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    if (fd == -1) {
+        perror("shmheap_create shm_open error\n");
     }
-    if (ftruncate(fd, len) == -1)
-    {
-        perror("ftruncate");
+    
+    if (ftruncate(fd, len) == -1) {
+        perror("truncate size error");
     }
     //get size of shared memory
-    if (fstat(fd, &sb) == -1)
-    {
-        perror("fstat");
+    if (fstat(fd, &info) == -1) {
+        perror("get info error");
     }
+    void* mmf = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0); //Memory mapped file
+    if (mmf == MAP_FAILED) {
+        perror("map files failed");
+    }
+    shmheap_memory_handle* hdlptr = mmf;
+
 
     //map the shared memory
-    hdlptr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //save this as pointer then allocate to mem.base
-    if (hdlptr == MAP_FAILED)
+    //hdlptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //save this as pointer then allocate to mem.base
+  /*  if (hdlptr == MAP_FAILED)
     {
         perror("mmap");
-    }
-    //hdlptr->name=strdup(name);
+    }*/
     hdlptr->total_size = len;
     hdlptr->used_space = (int)(sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
     hdlptr->baseaddr = hdlptr;
@@ -72,7 +68,7 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     //sem_wait(&shmheap_mutex);
     shmheap_memory_handle* hdlptr;
     int fd;
-    struct stat sb;
+    struct stat info;
 
     //open the shared memory
     fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -81,13 +77,13 @@ shmheap_memory_handle shmheap_connect(const char* name) {
         perror("shm_open");
     }
     //get size of shared memory
-    if (fstat(fd, &sb) == -1)
+    if (fstat(fd, &info) == -1)
     {
         perror("fstat");
     }
 
     //map the shared memory
-    hdlptr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    hdlptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (hdlptr == MAP_FAILED)
     {
         perror("mmap");

@@ -85,21 +85,27 @@ shmheap_memory_handle shmheap_connect(const char* name) {
 
 void shmheap_disconnect(shmheap_memory_handle mem) {
     /* TODO */
+     //unmaps the shared heap
     shmheap_memory_handle* hdlptr = &mem;
     sem_wait(&(hdlptr->shmheap_mutex));
     void* addr = hdlptr->baseaddr;
     size_t sz = hdlptr->len;
     if (munmap(addr, sz) == -1) {
-        perror("delete mappings failed");
+        perror("un mappings failed");
     }
     sem_post(&(hdlptr->shmheap_mutex));
 }
 
 void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
     /* TODO */
+    //unmaps the shared heap + unlinks(delete) the shared memory with the given name.
     shmheap_memory_handle* hdlptr = &mem;
     sem_destroy(&(hdlptr->shmheap_mutex));
-    munmap(hdlptr->baseaddr, (size_t)hdlptr->len);
+    void* addr = hdlptr->baseaddr;
+    size_t sz = hdlptr->len;
+    if (munmap(addr, sz) == -1) {
+        perror("un mappings failed");
+    }
     shm_unlink(name);
 
 }

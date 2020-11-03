@@ -107,11 +107,16 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
     //can straight away pass the address of mem into sem_wait via &mem
     shmheap_memory_handle* hdlptr = &mem;
 
+    //sem_wait(&(hdlptr->shmheap_mutex));
+    //if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
+    //    perror("delete mappings failed");
+    //    //exit(1);
+    //}
+    //sem_post(&(hdlptr->shmheap_mutex));
+
+    shmheap_memory_handle* hdlptr = &mem;
     sem_wait(&(hdlptr->shmheap_mutex));
-    if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
-        perror("delete mappings failed");
-        //exit(1);
-    }
+    munmap(&mem, sizeof(shmheap_memory_handle));
     sem_post(&(hdlptr->shmheap_mutex));
 
 

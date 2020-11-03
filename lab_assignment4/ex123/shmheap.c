@@ -87,8 +87,10 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
     /* TODO */
     shmheap_memory_handle* hdlptr = &mem;
     sem_wait(&(hdlptr->shmheap_mutex));
-    if (munmap(hdlptr->baseaddr, (size_t)hdlptr->len) == -1) {
-        perror("munmap");
+    void* addr = hdlptr->baseaddr;
+    size_t sz = hdlptr->len;
+    if (munmap(addr, sz) == -1) {
+        perror("delete mappings failed");
     }
     sem_post(&(hdlptr->shmheap_mutex));
 }

@@ -23,7 +23,7 @@ sem_t mutex;
 shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     /* TODO */
     struct stat info;
-    int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    int fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
         perror("shmheap_create shm_open error\n");
     }

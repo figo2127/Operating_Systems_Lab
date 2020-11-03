@@ -40,19 +40,11 @@ shmheap_memory_handle shmheap_create(const char* name, size_t len) {
         perror("map files failed");
     }
     shmheap_memory_handle* hdlptr = mmf;
-
-
-    //map the shared memory
-    //hdlptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); //save this as pointer then allocate to mem.base
-  /*  if (hdlptr == MAP_FAILED)
-    {
-        perror("mmap");
-    }*/
     hdlptr->total_size = len;
-    hdlptr->used_space = (int)(sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
+    hdlptr->used_space = hdl_sz;
     hdlptr->baseaddr = hdlptr;
     hdlptr->len = len;
-    hdlptr->init_offset = (int)(sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
+    hdlptr->init_offset = hdl_sz;
     sem_init(&(hdlptr->shmheap_mutex), 0, 1);
     shmheap_header* init = (shmheap_header*)((char*)hdlptr->baseaddr + (size_t)hdlptr->init_offset);
     init->occupied = 0;

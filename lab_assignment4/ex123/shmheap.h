@@ -33,6 +33,7 @@ requirements in the lab document.  If you declare additional names (helper struc
 
 #define MAX_FIRST_BOOK_KEEPING_SIZE = 80;
 #define SUBSEQ_MAX = 16;
+//#define HDL_SZ = hdl_sz;
 
 //consistent size
 typedef struct { //16 bytes
@@ -56,6 +57,9 @@ typedef struct { //maximum 80 bytes
     /*size_t size;
     int fd;*/
 } shmheap_memory_handle;
+
+size_t hdl_sz = (sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
+
 
 typedef struct {
     size_t offset;

@@ -33,30 +33,33 @@ requirements in the lab document.  If you declare additional names (helper struc
 #define MAX_FIRST_BOOK_KEEPING_SIZE = 80;
 #define SUBSEQ_MAX = 16;
 
-//consistent size
-typedef struct { //16 bytes
-    int occupied; //status
-    int last_header;
-    int sz;
-    int prev_sz; 
-} shmheap_header;
+#define MAX_LEN 100
 
-typedef struct { //maximum 80 bytes
-    sem_t shmheap_mutex;
+typedef struct { //should behave like a pointer to the shared memory region
+    //char * name;
+    void* baseaddr;
+    //int len;
+    //char buf[MAX_LEN];
+   //void * target;
+    int init_offset;
+    int len;
     size_t total_size;
     size_t used_space;
-    void* baseaddr;
-    size_t init_offset;
-    //sem_t shm_mutex;
-    /*void* start_ptr;
-    void* curr_ptr;*/
-    /*size_t size;
-    int fd;*/
+    sem_t shmheap_mutex;
+    //variable to check if there is a first header anot
 } shmheap_memory_handle;
 
 typedef struct {
-    size_t offset;
+    int offset;
 } shmheap_object_handle;
+
+typedef struct {
+    int occupied;
+    int last_header;
+    int sz;
+    int prev_sz;
+} shmheap_header;
+
 
 
 

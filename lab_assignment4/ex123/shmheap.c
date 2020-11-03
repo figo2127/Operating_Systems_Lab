@@ -119,7 +119,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
 
     while (true) {
         if ((size_t)init->sz == hdlptr->total_size) { //empty heap
-            printf("%s\n", "empty heap");
+            //printf("%s\n", "empty heap");
             init->occupied = 1;
             init->sz = (int)sz;
             init->last_header = 1;
@@ -127,38 +127,53 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             break;
         }
         else if ((size_t)init->sz == 0 && init->last_header == 0 && init->occupied == 0) {
-            printf("%s\n", "last slot");
+            //printf("%s\n", "last slot");
             init->occupied = 1;
             init->sz = (int)sz;
-            init->last_header = 1;
+            init->last_header = 0;
             hdlptr->used_space = hdlptr->used_space + (size_t)init->sz + sizeof(*init);
             size_t free_space = hdlptr->total_size - hdlptr->used_space;
             if (free_space <= sizeof(shmheap_header)) {
-                printf("%s\n", "merge last few bytes");
+                //printf("%s\n", "merge last few bytes");
                 init->sz = init->sz + (int)free_space;
+            }
+            else {
+                shmheap_header* header = (shmheap_header*)((char*)init + sizeof(*init) + sz);
+                header->last_header = 1;
+                header->occupied = 0;
+                header->prev_sz = init->sz;
+                header->sz = 0;
             }
             break;
         }
         else if (init->occupied < 1 && init->last_header == 1) {
-            printf("%s\n", "last header");
+            //printf("%s\n", "last header");
             hdlptr->used_space = hdlptr->used_space - ((size_t)init->sz);
             init->occupied = 1;
+            int oldsz = init->sz;
             init->sz = (int)sz;
-            init->last_header = 1;
+            init->last_header = 0;
             hdlptr->used_space = hdlptr->used_space + sz;
             size_t free_space = hdlptr->total_size - hdlptr->used_space;
             if (free_space <= sizeof(shmheap_header)) {
-                printf("%s\n", "merge last few bytes");
+                //printf("%s\n", "merge last few bytes");
                 init->sz = init->sz + (int)free_space;
+            }
+            else {
+                shmheap_header* header = (shmheap_header*)((char*)init + sizeof(*init) + sz);
+                header->last_header = 1;
+                header->occupied = 0;
+                header->prev_sz = init->sz;
+                header->sz = 0;
             }
             break;
         }
         else if (init->occupied < 1 && (size_t)init->sz >= sz) { //first slot free and match
-            printf("%s\n", "free slot middle");
+         //printf("%s\n", "free slot middle");
             init->occupied = 1;
             int oldsz = init->sz;
             if ((init->sz - (int)sz) > (int)sizeof(*init)) {
-                printf("%s\n", "fragment bc slot too big");
+                //printf("%s\n", "fragment bc slot too big");
                 init->sz = (int)sz;
                 shmheap_header* header = (shmheap_header*)((char*)init + sizeof(*init) + sz);
                 header->last_header = init->last_header;
@@ -178,7 +193,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             break;
         }
         else { //first slot is not free
-            printf("%s\n", "move to next slot");
+         //printf("%s\n", "move to next slot");
             size_t curr_size = (size_t)init->sz;
             init->last_header = 0;
             init = (shmheap_header*)((char*)init + curr_size + sizeof(*init));
@@ -200,7 +215,7 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
     shmheap_header* header = (shmheap_header*)((char*)ptr - sizeof(shmheap_header));
     size_t sz = (size_t)header->sz;
     header->occupied = 0;
-    printf("Cuurent header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", header, header->sz, header->prev_sz, header->occupied, header->last_header);
+    //printf("Cuurent header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", header, header->sz, header->prev_sz, header->occupied, header->last_header);
     //hdlptr->used_space=hdlptr->used_space - sizeof(shmheap_header) - (size_t)header->sz;
     //Get next header
     shmheap_header* next_header = (shmheap_header*)((char*)ptr + sz);
@@ -209,19 +224,19 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
         header->sz = (int)sz + next_header->sz + (int)sizeof(shmheap_header);
         if (next_header->last_header == 1) {
             header->last_header = 1;
-            printf("New current header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", header, header->sz, header->prev_sz, header->occupied, header->last_header);
+            //printf("New current header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", header, header->sz, header->prev_sz, header->occupied, header->last_header);
         }
         else {
             //have to change next next header's previous size
             shmheap_header* next_next_header = (shmheap_header*)((char*)next_header + next_header->sz + sizeof(shmheap_header));
             next_next_header->prev_sz = (int)header->sz;
-            printf("Next next header initial details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", next_next_header, next_next_header->sz, next_next_header->prev_sz, next_next_header->occupied, next_next_header->last_header);
+            //printf("Next next header initial details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", next_next_header, next_next_header->sz, next_next_header->prev_sz, next_next_header->occupied, next_next_header->last_header);
         }
     }
     if ((size_t)header->prev_sz > 0) {
         size_t prev_sz = (size_t)header->prev_sz;
         shmheap_header* prev_header = (shmheap_header*)((char*)header - prev_sz - sizeof(shmheap_header));
-        printf("Previous header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", prev_header, prev_header->sz, prev_header->prev_sz, prev_header->occupied, prev_header->last_header);
+        //printf("Previous header details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", prev_header, prev_header->sz, prev_header->prev_sz, prev_header->occupied, prev_header->last_header);
         if (prev_header->occupied < 1) {
             prev_header->sz = header->sz + prev_header->sz + (int)sizeof(shmheap_header);
         }
@@ -229,7 +244,7 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
             prev_header->last_header = 1;
             header->last_header = 0;
         }
-        printf("Previous header new details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", prev_header, prev_header->sz, prev_header->prev_sz, prev_header->occupied, prev_header->last_header);
+        //printf("Previous header new details: address = %p, size= %d, prev_size = %d, occupied = %d, last_header= %d\n", prev_header, prev_header->sz, prev_header->prev_sz, prev_header->occupied, prev_header->last_header);
     }
     //sem_post(&shmheap_mutex);
     sem_post(&(hdlptr->shmheap_mutex));

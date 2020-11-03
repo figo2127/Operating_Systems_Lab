@@ -7,6 +7,16 @@
 
 #include <stddef.h>
 #include <semaphore.h>
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <unistd.h>
+#include <fcntl.h> 
+#include <pthread.h>
+#include <sys/shm.h> 
+#include <sys/stat.h> 
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <string.h>
 
 
 /*
@@ -29,7 +39,7 @@ typedef struct { //16 bytes
     int last_header;
     int sz;
     int prev_sz; 
-} book_keeper;
+} shmheap_header;
 
 typedef struct { //maximum 80 bytes
     sem_t shmheap_mutex;

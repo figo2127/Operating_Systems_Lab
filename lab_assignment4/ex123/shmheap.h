@@ -6,6 +6,8 @@
 *************************************/
 
 #include <stddef.h>
+#include <semaphore.h>
+
 
 /*
 You should modify these structs to suit your implementation,

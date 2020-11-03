@@ -121,7 +121,7 @@ void shmheap_disconnect(shmheap_memory_handle mem) { //unmaps the shared heap
 }
 
 void shmheap_destroy(const char* name, shmheap_memory_handle mem) { 
-//unmaps the shared heap + unlinks(delete) the shared memory with the given name.
+    //unmaps the shared heap + unlinks(delete) the shared memory with the given name.
     /* TODO */
     shmheap_memory_handle* hdlptr = &mem;
 

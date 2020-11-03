@@ -1,6 +1,6 @@
 /*************************************
 * Lab 4
-* Name:
+* Name: 
 * Student No:
 * Lab Group:
 *************************************/
@@ -102,14 +102,13 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     return *mem;
 }
 
-void shmheap_disconnect(shmheap_memory_handle mem) {
+void shmheap_disconnect(shmheap_memory_handle mem) { //unmaps the shared heap
     /* TODO */
-    //can straight away pass the address of mem into sem_wait via &mem
     shmheap_memory_handle* hdlptr = &mem;
 
     sem_wait(&(hdlptr->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
-        perror("delete mappings failed");
+        perror("unmap in disconnect failed");
         exit(1);
     }
     sem_post(&(hdlptr->shmheap_mutex));
@@ -121,16 +120,20 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
 
 }
 
-void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
+void shmheap_destroy(const char* name, shmheap_memory_handle mem) { 
+    //unmaps the shared heap + unlinks(delete) the shared memory with the given name.
     /* TODO */
     shmheap_memory_handle* hdlptr = &mem;
 
     sem_destroy(&(hdlptr->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
-        perror("delete mappings failed");
+        perror("unmap in destroy failed");
         exit(1);
     }
-    shm_unlink(name);
+    if (shm_unlink(name) == -1) {
+        printf("falied to unlink/delete shared memory with %c\n", *name);
+        exit(1);
+    }
 }
 
 

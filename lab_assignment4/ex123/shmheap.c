@@ -109,7 +109,7 @@ void shmheap_disconnect(shmheap_memory_handle mem) { //unmaps the shared heap
     sem_wait(&(hdlptr->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
         perror("unmap in disconnect failed");
-        //exit(1);
+        exit(1);
     }
     sem_post(&(hdlptr->shmheap_mutex));
 
@@ -128,11 +128,10 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
     sem_destroy(&(hdlptr->shmheap_mutex));
     if (munmap(&mem, sizeof(shmheap_memory_handle)) == -1) {
         perror("unmap in destroy failed");
-        //exit(1);
+        exit(1);
     }
     if (shm_unlink(name) == -1) {
-        printf("falied to unlink/delete shared memory with %c\n", *name);
-        //exit(1);
+        perror("unlink/delete shared memory err");
     }
 }
 

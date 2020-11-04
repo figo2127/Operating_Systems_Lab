@@ -46,7 +46,7 @@ shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     hdlptr->total_size = len;
     hdlptr->used_space = hdl_sz;
     hdlptr->baseaddr = hdlptr;
-    hdlptr->len = len;
+    hdlptr->length = len;
     hdlptr->init_offset = hdl_sz;
     //initialize semaphore
     sem_init(&(hdlptr->shmheap_mutex), 0, 1);
@@ -69,18 +69,19 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     int fd = shm_open(name, O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
         perror("shm_open error");
+        exit(1);
     }
     //get size of shared memory
     if (fstat(fd, &info) == -1) {
         perror("fstat in connect");
-        //exit(1);
+        exit(1);
     }
 
     //map the shared memory
     void* ptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED) {
         perror("mmap failure");
-        //exit(1);
+        exit(1);
     }
     shmheap_memory_handle* hdlptr = ptr;
   
@@ -95,7 +96,7 @@ void shmheap_disconnect(shmheap_memory_handle mem) {
     shmheap_memory_handle* hdlptr = &mem;
     sem_wait(&(hdlptr->shmheap_mutex));
     void* addr = hdlptr->baseaddr;
-    size_t sz = hdlptr->len;
+    size_t sz = hdlptr->length;
     if (munmap(addr, sz) == -1) {
         perror("un mappings failed");
     }
@@ -108,9 +109,10 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
     shmheap_memory_handle* hdlptr = &mem;
     sem_destroy(&(hdlptr->shmheap_mutex));
     void* addr = hdlptr->baseaddr;
-    size_t sz = hdlptr->len;
+    size_t sz = hdlptr->length;
     if (munmap(addr, sz) == -1) {
         perror("un mappings failed");
+        exit(1);
     }
     shm_unlink(name);
 
@@ -166,18 +168,17 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             }
             break;
         }
-        else if (bk->occupied < 1 && bk->bk_prev == 1) {
+        else if (bk->occupied != 1 && bk->bk_prev == 1) {
             hdlptr->used_space = hdlptr->used_space - (bk->sz);
             bk->occupied = 1;
             bk->sz = modified_sz;
             bk->bk_prev = 0;
             hdlptr->used_space = hdlptr->used_space + modified_sz;
-            char* end = (char*)bk + sizeof(*bk) + modified_sz;
-            char* beg = (char*)hdlptr->baseaddr;
-            size_t used = end - beg;
-            size_t free = hdlptr->total_size - used;
-            if (free <= sizeof(book_keeper)) {
-                bk->sz = bk->sz + free;
+            char* endOfAddr = (char*)bk + sizeof(*bk) + modified_sz;
+            size_t space_used = endOfAddr - (char*)hdlptr->baseaddr;
+            size_t space_left = hdlptr->total_size - space_used;
+            if (space_left <= sizeof(book_keeper)) {
+                bk->sz = bk->sz + space_left;
                 bk->bk_prev = 1;
             }
             else {
@@ -189,7 +190,8 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             }
             break;
         }
-        else if (bk->occupied < 1 && bk->sz >= modified_sz) { //first slot free and match
+        //first fit
+        else if (bk->occupied != 1 && bk->sz >= modified_sz) { 
             bk->occupied = 1;
             int oldsz = bk->sz;
             if ((bk->sz - modified_sz) > (int)sizeof(*bk)) {

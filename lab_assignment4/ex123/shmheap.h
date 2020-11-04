@@ -43,12 +43,11 @@ typedef struct { //16 bytes
 
 typedef struct { //maximum 80 bytes
     int init_offset;
-    int len;
+    int length;
     size_t total_size;
     size_t used_space;
     sem_t shmheap_mutex;
     void* baseaddr;
-    //sem_t shm_mutex;
     /*void* start_ptr;
     void* curr_ptr;*/
     /*size_t size;

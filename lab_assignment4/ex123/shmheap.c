@@ -138,23 +138,23 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
     book_keeper* bk = (book_keeper*)((char*)mem.baseaddr + (size_t)mem.init_offset);
 
     while (1) {
-        if ((size_t)bk->sz == hdlptr->total_size) { 
-            bk->sz = (int)modified_sz;
+        if (bk->sz == hdlptr->total_size) { 
+            bk->sz = modified_sz;
             bk->occupied = 1;
             bk->bk_prev = 1;
-            hdlptr->used_space = hdlptr->used_space + (size_t)bk->sz + sizeof(*bk);
+            hdlptr->used_space = hdlptr->used_space + bk->sz + sizeof(*bk);
             break;
         }
-        else if ((size_t)bk->sz == 0 && bk->bk_prev == 0 && bk->occupied == 0) {
+        else if (bk->sz == 0 && bk->bk_prev == 0 && bk->occupied == 0) {
             bk->occupied = 1;
-            bk->sz = (int)modified_sz;
+            bk->sz = modified_sz;
             bk->bk_prev = 0;
-            hdlptr->used_space = hdlptr->used_space + (size_t)bk->sz + sizeof(*bk);
+            hdlptr->used_space = hdlptr->used_space + bk->sz + sizeof(*bk);
             char* endOfAddr = (char*)bk + sizeof(*bk) + modified_sz;
             size_t space_used = endOfAddr - (char*)hdlptr->baseaddr;
             size_t space_left = hdlptr->total_size - space_used;
             if (space_left <= sizeof(book_keeper)) { 
-                bk->sz += (int)space_left;
+                bk->sz += space_left;
                 bk->bk_prev = 1;
             }
             else {
@@ -167,9 +167,9 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             break;
         }
         else if (bk->occupied < 1 && bk->bk_prev == 1) {
-            hdlptr->used_space = hdlptr->used_space - ((size_t)bk->sz);
+            hdlptr->used_space = hdlptr->used_space - (bk->sz);
             bk->occupied = 1;
-            bk->sz = (int)modified_sz;
+            bk->sz = modified_sz;
             bk->bk_prev = 0;
             hdlptr->used_space = hdlptr->used_space + modified_sz;
             char* end = (char*)bk + sizeof(*bk) + modified_sz;
@@ -177,7 +177,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             size_t used = end - beg;
             size_t free = hdlptr->total_size - used;
             if (free <= sizeof(book_keeper)) {
-                bk->sz = bk->sz + (int)free;
+                bk->sz = bk->sz + free;
                 bk->bk_prev = 1;
             }
             else {
@@ -189,17 +189,17 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             }
             break;
         }
-        else if (bk->occupied < 1 && (size_t)bk->sz >= modified_sz) { //first slot free and match
+        else if (bk->occupied < 1 && bk->sz >= modified_sz) { //first slot free and match
             bk->occupied = 1;
             int oldsz = bk->sz;
-            if ((bk->sz - (int)modified_sz) > (int)sizeof(*bk)) {
-                bk->sz = (int)modified_sz;
+            if ((bk->sz - modified_sz) > (int)sizeof(*bk)) {
+                bk->sz = modified_sz;
                 book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
                 header->bk_prev = bk->bk_prev;
                 header->occupied = 0;
                 header->prev_sz = bk->sz;
-                header->sz = oldsz - (int)modified_sz - (int)sizeof(*header);
-                book_keeper* next_header = (book_keeper*)((char*)header + sizeof(*header) + (size_t)header->sz);
+                header->sz = oldsz - modified_sz - sizeof(*header);
+                book_keeper* next_header = (book_keeper*)((char*)header + sizeof(*header) + header->sz);
                 if (next_header->sz != 0) {
                     next_header->prev_sz = header->sz;
                 }
@@ -208,14 +208,14 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
                 sem_wait(&(hdlptr->shmheap_mutex));
             }
             //bk->sz=sz;
-            hdlptr->used_space = hdlptr->used_space + (size_t)bk->sz + sizeof(*bk);
+            hdlptr->used_space = hdlptr->used_space + (bk->sz) + sizeof(*bk);
             break;
         }
         else { //first slot is not free
-            size_t curr_size = (size_t)bk->sz;
+            size_t curr_size = bk->sz;
             bk->bk_prev = 0;
             bk = (book_keeper*)((char*)bk + curr_size + sizeof(*bk));
-            bk->prev_sz = (int)curr_size;
+            bk->prev_sz = curr_size;
             continue;
         }
     }

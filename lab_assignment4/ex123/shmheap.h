@@ -37,8 +37,8 @@ requirements in the lab document.  If you declare additional names (helper struc
 typedef struct { //16 bytes
     int occupied; //status
     int bk_prev;
-    int sz;
-    int prev_sz; 
+    size_t sz;
+    size_t prev_sz; 
 } book_keeper;
 
 typedef struct { //maximum 80 bytes

@@ -59,7 +59,8 @@ typedef struct { //maximum 80 bytes
 typedef struct {
     size_t offset;
 } shmheap_object_handle;
-size_t hdl_sz = (sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
+
+
 
 
 

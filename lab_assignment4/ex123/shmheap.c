@@ -9,6 +9,8 @@
 
 
 sem_t mutex;
+size_t hdl_sz = (sizeof(char*) + 3 * sizeof(size_t) + sizeof(sem_t));
+
 
 //For ex1, you just need to return a pointer to the allocated space in the shared heap.
 //Once returned, the runner can use this allocated space in the same way you would use
@@ -130,14 +132,14 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
     /* TODO */
     shmheap_memory_handle* hdlptr = shmheap_underlying(mem);
     sem_wait(&(hdlptr->shmheap_mutex));
-    sz = ensure_eightbyte_aligned(sz);
+    size_t modified_sz;
+    modified_sz = ensure_eightbyte_aligned(sz);
 
     book_keeper* bk = (book_keeper*)((char*)mem.baseaddr + (size_t)mem.init_offset);
 
-
     while (1) {
         if ((size_t)bk->sz == hdlptr->total_size) { 
-            bk->sz = (int)sz;
+            bk->sz = (int)modified_sz;
             bk->occupied = 1;
             bk->bk_prev = 1;
             hdlptr->used_space = hdlptr->used_space + (size_t)bk->sz + sizeof(*bk);
@@ -145,10 +147,10 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
         }
         else if ((size_t)bk->sz == 0 && bk->bk_prev == 0 && bk->occupied == 0) {
             bk->occupied = 1;
-            bk->sz = (int)sz;
+            bk->sz = (int)modified_sz;
             bk->bk_prev = 0;
             hdlptr->used_space = hdlptr->used_space + (size_t)bk->sz + sizeof(*bk);
-            char* endOfAddr = (char*)bk + sizeof(*bk) + sz; 
+            char* endOfAddr = (char*)bk + sizeof(*bk) + modified_sz;
             size_t space_used = endOfAddr - (char*)hdlptr->baseaddr;
             size_t space_left = hdlptr->total_size - space_used;
             if (space_left <= sizeof(book_keeper)) { 
@@ -156,7 +158,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
                 bk->bk_prev = 1;
             }
             else {
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + sz);
+                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
                 header->bk_prev = 1;
                 header->occupied = 0;
                 header->prev_sz = bk->sz;
@@ -167,10 +169,10 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
         else if (bk->occupied < 1 && bk->bk_prev == 1) {
             hdlptr->used_space = hdlptr->used_space - ((size_t)bk->sz);
             bk->occupied = 1;
-            bk->sz = (int)sz;
+            bk->sz = (int)modified_sz;
             bk->bk_prev = 0;
-            hdlptr->used_space = hdlptr->used_space + sz;
-            char* end = (char*)bk + sizeof(*bk) + sz;
+            hdlptr->used_space = hdlptr->used_space + modified_sz;
+            char* end = (char*)bk + sizeof(*bk) + modified_sz;
             char* beg = (char*)hdlptr->baseaddr;
             size_t used = end - beg;
             size_t free = hdlptr->total_size - used;
@@ -179,7 +181,7 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
                 bk->bk_prev = 1;
             }
             else {
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + sz);
+                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
                 header->bk_prev = 1;
                 header->occupied = 0;
                 header->prev_sz = bk->sz;
@@ -187,16 +189,16 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             }
             break;
         }
-        else if (bk->occupied < 1 && (size_t)bk->sz >= sz) { //first slot free and match
+        else if (bk->occupied < 1 && (size_t)bk->sz >= modified_sz) { //first slot free and match
             bk->occupied = 1;
             int oldsz = bk->sz;
-            if ((bk->sz - (int)sz) > (int)sizeof(*bk)) {
-                bk->sz = (int)sz;
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + sz);
+            if ((bk->sz - (int)modified_sz) > (int)sizeof(*bk)) {
+                bk->sz = (int)modified_sz;
+                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
                 header->bk_prev = bk->bk_prev;
                 header->occupied = 0;
                 header->prev_sz = bk->sz;
-                header->sz = oldsz - (int)sz - (int)sizeof(*header);
+                header->sz = oldsz - (int)modified_sz - (int)sizeof(*header);
                 book_keeper* next_header = (book_keeper*)((char*)header + sizeof(*header) + (size_t)header->sz);
                 if (next_header->sz != 0) {
                     next_header->prev_sz = header->sz;
@@ -238,18 +240,19 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
     book_keeper* header = (book_keeper*)((char*)ptr - sizeof(book_keeper));
     size_t sz = (size_t)header->sz;
     header->occupied = 0;
-    //hdlptr->used_space=hdlptr->used_space - sizeof(book_keeper) - (size_t)header->sz;
     //Get next header
     book_keeper* next_header = (book_keeper*)((char*)ptr + sz);
+
+    //attempt to combine free spaces
     if (next_header->occupied < 1 && header->bk_prev != 1) {
         header->sz = (int)sz + next_header->sz + (int)sizeof(book_keeper);
-        if (next_header->bk_prev == 1) {
-            header->bk_prev = 1;
-        }
-        else {
+        if (next_header->bk_prev != 1) {
             //have to change next next header's previous size
             book_keeper* next_next_header = (book_keeper*)((char*)next_header + next_header->sz + sizeof(book_keeper));
             next_next_header->prev_sz = (int)header->sz;
+        }
+        else {
+            header->bk_prev = 1;
         }
     }
     if ((size_t)header->prev_sz > 0) {
@@ -269,7 +272,6 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
 
 shmheap_object_handle shmheap_ptr_to_handle(shmheap_memory_handle mem, void* ptr) {
     /* TODO */
-    //sem_wait(&shmheap_mutex);
     shmheap_object_handle* objhand = (shmheap_object_handle*)malloc(sizeof(shmheap_object_handle));
     int p = (char*)ptr - (char*)mem.baseaddr;
     objhand->offset = p;
@@ -278,10 +280,8 @@ shmheap_object_handle shmheap_ptr_to_handle(shmheap_memory_handle mem, void* ptr
 
 void* shmheap_handle_to_ptr(shmheap_memory_handle mem, shmheap_object_handle hdl) {
     /* TODO */
-    //sem_wait(&shmheap_mutex);
     void* baseaddr = mem.baseaddr;
     int offset = hdl.offset;
     char* target = (char*)baseaddr + offset;
-    //sem_post(&shmheap_mutex);
     return target;
 }

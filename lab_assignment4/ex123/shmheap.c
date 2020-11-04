@@ -30,7 +30,6 @@ shmheap_memory_handle shmheap_create(const char* name, size_t len) {
     if (fd == -1) {
         perror("shmheap_create shm_open error\n");
     }
-    
     if (ftruncate(fd, len) == -1) {
         perror("truncate size error");
     }
@@ -69,19 +68,19 @@ shmheap_memory_handle shmheap_connect(const char* name) {
     int fd = shm_open(name, O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) {
         perror("shm_open error");
-        exit(1);
+        //exit(1);
     }
     //get size of shared memory
     if (fstat(fd, &info) == -1) {
         perror("fstat in connect");
-        exit(1);
+        //exit(1);
     }
 
     //map the shared memory
     void* ptr = mmap(NULL, info.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (ptr == MAP_FAILED) {
         perror("mmap failure");
-        exit(1);
+        //exit(1);
     }
     shmheap_memory_handle* handle_ptr = ptr;
   
@@ -112,7 +111,7 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
     size_t sz = handle_ptr->length;
     if (munmap(addr, sz) == -1) {
         perror("un mappings failed");
-        exit(1);
+        //exit(1);
     }
     shm_unlink(name);
 
@@ -120,10 +119,6 @@ void shmheap_destroy(const char* name, shmheap_memory_handle mem) {
 
 void* shmheap_underlying(shmheap_memory_handle mem) {
     /* TODO */
-    //shmheap_memory_handle* handle_ptr = &mem;
-    //sem_wait(&(handle_ptr->shmheap_mutex));
-    ////printf("Base address(shmheap) = %p\n", mem.baseaddr);
-    //sem_post(&(handle_ptr->shmheap_mutex));
     return mem.baseaddr;
 
     //return &mem;
@@ -147,27 +142,6 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             handle_ptr->used_space = handle_ptr->used_space + bk->sz + sizeof(*bk);
             break;
         }
-        else if (bk->sz == 0 && bk->bk_prev == 0 && bk->occupied == 0) {
-            bk->occupied = 1;
-            bk->sz = modified_sz;
-            bk->bk_prev = 0;
-            handle_ptr->used_space = handle_ptr->used_space + bk->sz + sizeof(*bk);
-            char* endOfAddr = (char*)bk + sizeof(*bk) + modified_sz;
-            size_t space_used = endOfAddr - (char*)handle_ptr->baseaddr;
-            size_t space_left = handle_ptr->total_size - space_used;
-            if (space_left <= sizeof(book_keeper)) { 
-                bk->sz += space_left;
-                bk->bk_prev = 1;
-            }
-            else {
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
-                header->occupied = 0;
-                header->bk_prev = 1;
-                header->prev_sz = bk->sz;
-                header->sz = 0;
-            }
-            break;
-        }
         else if (bk->occupied != 1 && bk->bk_prev == 1) {
             handle_ptr->used_space = handle_ptr->used_space - (bk->sz);
             bk->occupied = 1;
@@ -182,11 +156,32 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
                 bk->bk_prev = 1;
             }
             else {
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
-                header->occupied = 0;
-                header->bk_prev = 1;
-                header->prev_sz = bk->sz;
-                header->sz = 0;
+                book_keeper* heading = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
+                heading->occupied = 0;
+                heading->bk_prev = 1;
+                heading->prev_sz = bk->sz;
+                heading->sz = 0;
+            }
+            break;
+        }
+        else if (bk->sz == 0 && bk->bk_prev == 0 && bk->occupied == 0) {
+            bk->occupied = 1;
+            bk->sz = modified_sz;
+            bk->bk_prev = 0;
+            handle_ptr->used_space = handle_ptr->used_space + bk->sz + sizeof(*bk);
+            char* endOfAddr = (char*)bk + sizeof(*bk) + modified_sz;
+            size_t space_used = endOfAddr - (char*)handle_ptr->baseaddr;
+            size_t space_left = handle_ptr->total_size - space_used;
+            if (space_left <= sizeof(book_keeper)) {
+                bk->sz += space_left;
+                bk->bk_prev = 1;
+            }
+            else {
+                book_keeper* heading = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
+                heading->occupied = 0;
+                heading->bk_prev = 1;
+                heading->prev_sz = bk->sz;
+                heading->sz = 0;
             }
             break;
         }
@@ -196,20 +191,19 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             int oldsz = bk->sz;
             if ((bk->sz - modified_sz) > (int)sizeof(*bk)) {
                 bk->sz = modified_sz;
-                book_keeper* header = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
-                header->occupied = 0;
-                header->bk_prev = bk->bk_prev;
-                header->prev_sz = bk->sz;
-                header->sz = oldsz - modified_sz - sizeof(*header);
-                book_keeper* next_header = (book_keeper*)((char*)header + sizeof(*header) + header->sz);
-                if (next_header->sz != 0) {
-                    next_header->prev_sz = header->sz;
+                book_keeper* heading = (book_keeper*)((char*)bk + sizeof(*bk) + modified_sz);
+                heading->occupied = 0;
+                heading->bk_prev = bk->bk_prev;
+                heading->prev_sz = bk->sz;
+                heading->sz = oldsz - modified_sz - sizeof(*heading);
+                book_keeper* next_heading = (book_keeper*)((char*)heading + sizeof(*heading) + heading->sz);
+                if (next_heading->sz != 0) {
+                    next_heading->prev_sz = heading->sz;
                 }
                 sem_post(&(handle_ptr->shmheap_mutex));
-                shmheap_free(mem, (char*)header + sizeof(*header));
+                shmheap_free(mem, (char*)heading + sizeof(*heading));
                 sem_wait(&(handle_ptr->shmheap_mutex));
             }
-            //bk->sz=sz;
             handle_ptr->used_space = handle_ptr->used_space + (bk->sz) + sizeof(*bk);
             break;
         }
@@ -221,15 +215,13 @@ void* shmheap_alloc(shmheap_memory_handle mem, size_t sz) { //can just return ba
             continue;
         }
     }
-    //sem_post(&shmheap_mutex);
     sem_post(&(handle_ptr->shmheap_mutex));
     return (book_keeper*)((char*)bk + sizeof(*bk));
-
 }
 
 size_t ensure_eightbyte_aligned(size_t sz) {
     if (sz % 8 != 0) {
-        sz = ((sz + 7) & (-8)); //bitwise AND
+        sz = ((-8) & (sz + 7)); //bitwise AND
     }
     return sz;
 }
@@ -238,33 +230,33 @@ void shmheap_free(shmheap_memory_handle mem, void* ptr) {
     /* TODO */
     shmheap_memory_handle* handle_ptr = (shmheap_memory_handle*)mem.baseaddr;
     sem_wait(&(handle_ptr->shmheap_mutex));
-    book_keeper* header = (book_keeper*)((char*)ptr - sizeof(book_keeper));
-    header->occupied = 0;
-    size_t sz = header->sz;
+    book_keeper* heading = (book_keeper*)((char*)ptr - sizeof(book_keeper));
+    heading->occupied = 0;
+    size_t sz = heading->sz;
 
-    book_keeper* next_header = (book_keeper*)((char*)ptr + sz);
+    book_keeper* next_heading = (book_keeper*)((char*)ptr + sz);
 
     //attempt to combine free spaces
-    if (next_header->occupied < 1 && header->bk_prev != 1) {
-        header->sz = sz + next_header->sz + sizeof(book_keeper);
-        if (next_header->bk_prev != 1) {
-            //have to change next next header's previous size
-            book_keeper* next_next_header = (book_keeper*)((char*)next_header + next_header->sz + sizeof(book_keeper));
-            next_next_header->prev_sz = header->sz;
+    if (next_heading->occupied != 1 && heading->bk_prev != 1) {
+        heading->sz = sz + next_heading->sz + sizeof(book_keeper);
+        if (next_heading->bk_prev != 1) {
+            //have to change the next next heading's previous size
+            book_keeper* next_next_heading = (book_keeper*)((char*)next_heading + next_heading->sz + sizeof(book_keeper));
+            next_next_heading->prev_sz = heading->sz;
         }
         else {
-            header->bk_prev = 1;
+            heading->bk_prev = 1;
         }
     }
-    if (header->prev_sz > 0) {
-        size_t prev_sz = header->prev_sz;
-        book_keeper* prev_header = (book_keeper*)((char*)header - prev_sz - sizeof(book_keeper));
+    if (heading->prev_sz > 0) {
+        size_t prev_sz = heading->prev_sz;
+        book_keeper* prev_header = (book_keeper*)((char*)heading - prev_sz - sizeof(book_keeper));
         if (prev_header->occupied < 1) {
-            prev_header->sz = header->sz + prev_header->sz + sizeof(book_keeper);
+            prev_header->sz = heading->sz + prev_header->sz + sizeof(book_keeper);
         }
-        if (header->bk_prev == 1) {
+        if (heading->bk_prev == 1) {
             prev_header->bk_prev = 1;
-            header->bk_prev = 0;
+            heading->bk_prev = 0;
         }
     }
     sem_post(&(handle_ptr->shmheap_mutex));

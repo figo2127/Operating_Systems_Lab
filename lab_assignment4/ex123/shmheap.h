@@ -60,10 +60,6 @@ typedef struct {
 } shmheap_object_handle;
 
 
-
-
-
-
 /*
 These functions form the public API of your shmheap library.
 */

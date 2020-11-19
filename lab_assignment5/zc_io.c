@@ -27,7 +27,7 @@ struct zc_file {
 zc_file* zc_open(const char* path) {
     // To implement
     // Allocate the basic metadata structure
-    zc_file* zfile = (zc_file*)calloc(1, sizeof(zc_file));
+    zc_file* zfile = (zc_file*)malloc(sizeof(zc_file));
     void* start_addr;
     struct stat sb;
 

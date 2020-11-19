@@ -44,13 +44,13 @@ zc_file* zc_open(const char* path) {
         perror("get stats failed\n");
         exit(1);
     }
-    if (buf.st_size != 0) {
-        if ((front_ptr = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0)) == MAP_FAILED) {
+    size = buf.st_size;
+    if (size != 0) {
+        if ((front_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0)) == MAP_FAILED) {
             perror("mmap failed\n");
             exit(1);
         }
     }
-    size = buf.st_size;
     pthread_rwlock_init(&(zerocpy->lock_for_rw), NULL);
     pthread_mutex_init(&(zerocpy->mutex), NULL);
     zerocpy->front_ptr = front_ptr;

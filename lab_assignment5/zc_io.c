@@ -122,17 +122,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     }
     //void* mremap(void* old_address, size_t old_size,
     //    size_t new_size, int flags, ... /* void *new_address */);
-    if ((size + file->offset) > totalsize) {
-        //If file does not have sufficient space
-        size_t new_size = size + file->offset;
-        if ((new_ptr = mremap(file->front_ptr, totalsize, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) { //expands the memory mapping here
-            perror("mremap failed\n");
-            exit(1);
-        }
-        ftruncate(file->fd, new_size); //truncate file to specific length(increase it here)
-        file->size = new_size;
-        file->front_ptr = new_ptr;
-    }
+
 
     ret_ptr = ((char*)file->front_ptr + file->offset);
     file->offset = file->offset + size;

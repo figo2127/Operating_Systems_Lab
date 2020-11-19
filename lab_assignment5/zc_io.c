@@ -16,7 +16,7 @@ struct zc_file {
     // Insert the fields you need here.
     //Mutex can have only one reader or writer at a time,
     //RwLock can have one writer or multiple reader at a time.
-    pthread_rwlock_t rwlock;
+    pthread_rwlock_t lock_for_rw;
     pthread_mutex_t mutex;
     void* front_ptr;
     int fd;
@@ -24,14 +24,12 @@ struct zc_file {
     size_t size;
 };
 
-
 /**************
  * Exercise 1 *
  **************/
 
 zc_file* zc_open(const char* path) {
     // To implement
-    // Allocate the basic metadata structure
     void* front_ptr;
     int fd;
     off_t offset = 0;
@@ -39,25 +37,22 @@ zc_file* zc_open(const char* path) {
     zc_file* zerocpy = (zc_file*)malloc(sizeof(zc_file));
     struct stat buf;
 
-    //Open the file
-    if ((fd = open(path, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO)) == -1) {
+    if ((fd = open(path, O_CREAT | O_RDWR, S_IRWXG | S_IRWXO | S_IRWXU)) == -1) {
         printf("open file failed\n");
         exit(1);
     }
-    //Get size of file for mmap
     if (fstat(fd, &buf) == -1) {
         printf("get stats failed\n");
         exit(1);
     }
-    //mmap if file size is not zero
     if (buf.st_size != 0) {
-        if ((front_ptr = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+        if ((front_ptr = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0)) == MAP_FAILED) {
             printf("mmap failed\n");
             exit(1);
         }
     }
     size = buf.st_size;
-    pthread_rwlock_init(&(zerocpy->rwlock), NULL);
+    pthread_rwlock_init(&(zerocpy->lock_for_rw), NULL);
     pthread_mutex_init(&(zerocpy->mutex), NULL);
     zerocpy->front_ptr = front_ptr;
     zerocpy->fd = fd;
@@ -69,86 +64,81 @@ zc_file* zc_open(const char* path) {
 int zc_close(zc_file* file) {
     // To implement
     pthread_mutex_lock(&(file->mutex));
+    //unmap the mapped file, indicating its size
     munmap(file->front_ptr, file->size);
     close(file->fd);
-    pthread_rwlock_destroy(&(file->rwlock));
+    pthread_rwlock_destroy(&(file->lock_for_rw));
     pthread_mutex_unlock(&(file->mutex));
     free(file);
     pthread_mutex_destroy(&(file->mutex));
     return 0;
 }
 
-const char* zc_read_start(zc_file* file, size_t* size) { //point to buffer at least size bytes big
+const char* zc_read_start(zc_file* file, size_t* size) { //returns pointer to buffer at least 'size' bytes 
     // To implement
-    char* address_ret = NULL;
-    //Get reader lock
-    pthread_rwlock_rdlock(&(file->rwlock));
-    //Get  lock for metadata access
+    char* ptr = NULL;
+    size_t totalsize = file->size;
+    pthread_rwlock_rdlock(&(file->lock_for_rw));
     pthread_mutex_lock(&(file->mutex));
 
-    if (file->offset == file->size) {
-        //If file is completely read
-        return address_ret;
+    if (totalsize == file->offset) { //nothing left to read
+        return ptr;
     }
-    if (file->size < (file->offset + (*size))) {
-        //When size is greater than the remaining size to be read
-        (*size) = (file->size - file->offset); //set size to correct amount that's left
+    if (totalsize < (file->offset + (*size))) {
+        //assign size to the correct available amount
+        (*size) = (totalsize - file->offset); 
     }
-
-    address_ret = ((char*)(file->front_ptr) + file->offset);
-
-    file->offset += (*size); //increase the offset
+    ptr = ((char*)(file->front_ptr) + file->offset);
+    file->offset = file->offset + (*size); //increase the offset
     pthread_mutex_unlock(&(file->mutex));
-
-    return address_ret;
+    return ptr;
 }
 
 void zc_read_end(zc_file* file) {
     // To implement
-    pthread_rwlock_unlock(&(file->rwlock));
+    pthread_rwlock_unlock(&(file->lock_for_rw));
 }
 
 /**************
  * Exercise 2 *
  **************/
 
-char* zc_write_start(zc_file* file, size_t size) {
+char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at least 'size' bytes that can be written
     // To implement
-    void* new_addr, * ret_addr = NULL;
-    //Get writer lock
-    pthread_rwlock_wrlock(&(file->rwlock));
+    void* new_ptr = NULL;
+    void* ret_ptr = NULL;
+    pthread_rwlock_wrlock(&(file->lock_for_rw));
     pthread_mutex_lock(&(file->mutex));
 
-
-    if (file->size != 0 && (size + file->offset) > file->size) {
+    size_t totalsize = file->size;
+    if (totalsize != 0 && (size + file->offset) > totalsize) {
         //If file does not have sufficient space
-        if ((new_addr = mremap(file->front_ptr, file->size, (file->offset + size), MREMAP_MAYMOVE)) == (void*)-1) {
-            printf("mremap failed : %s\n", strerror(errno));
-            return ret_addr;
+        if ((new_ptr = mremap(file->front_ptr, totalsize, (file->offset + size), MREMAP_MAYMOVE)) == MAP_FAILED) {
+            printf("mremap failed\n");
+            exit(1);
         }
-        //Resize to make it grow bigger
-        ftruncate(file->fd, size + file->offset);
-        file->front_ptr = new_addr;
+        ftruncate(file->fd, size + file->offset); //truncate file to specific length(increase it here)
+        file->front_ptr = new_ptr;
         file->size = (file->offset + size);
     }
 
     if (file->size == 0) {
         //If this is new file created, mmap now
-        if ((new_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0)) == MAP_FAILED) {
+        if ((new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0)) == MAP_FAILED) {
             printf("mmap failed(for newly created file)\n");
             exit(1);
         }
         ftruncate(file->fd, size);
-        file->front_ptr = new_addr;
+        file->front_ptr = new_ptr;
         file->size = (size);
     }
 
-    ret_addr = ((char*)file->front_ptr + file->offset);
+    ret_ptr = ((char*)file->front_ptr + file->offset);
 
     file->offset += size;
     pthread_mutex_unlock(&(file->mutex));
 
-    return ret_addr;
+    return ret_ptr;
 }
 
 void zc_write_end(zc_file* file) {
@@ -157,7 +147,7 @@ void zc_write_end(zc_file* file) {
     if ((msync(file->front_ptr, file->size, MS_SYNC)) == -1) {
         printf("msync failed with %s\n", strerror(errno));
     }
-    pthread_rwlock_unlock(&(file->rwlock));
+    pthread_rwlock_unlock(&(file->lock_for_rw));
 }
 
 /**************
@@ -167,7 +157,7 @@ void zc_write_end(zc_file* file) {
 off_t zc_lseek(zc_file* file, long offset, int whence) { //repositioning the file offset
     // To implement
     off_t repositioned_offset;
-    pthread_rwlock_wrlock(&(file->rwlock));
+    pthread_rwlock_wrlock(&(file->lock_for_rw));
     pthread_mutex_lock(&(file->mutex));
     if (whence == SEEK_SET) {
         repositioned_offset = offset;
@@ -184,7 +174,7 @@ off_t zc_lseek(zc_file* file, long offset, int whence) { //repositioning the fil
     }
     file->offset = repositioned_offset;
     pthread_mutex_unlock(&(file->mutex));
-    pthread_rwlock_unlock(&(file->rwlock));
+    pthread_rwlock_unlock(&(file->lock_for_rw));
     return repositioned_offset;
 }
 

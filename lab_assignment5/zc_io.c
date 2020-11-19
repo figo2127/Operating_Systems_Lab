@@ -112,7 +112,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
 
     size_t totalsize = file->size;
     if (totalsize == 0) { //handle new file, create a memory mapping 
-        if ((new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0)) == MAP_FAILED) {
+        if ((new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, file->fd, 0)) == MAP_FAILED) {
             perror("mmap failed(for newly created file)\n");
             exit(1);
         }
@@ -123,7 +123,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     //void* mremap(void* old_address, size_t old_size,
     //    size_t new_size, int flags, ... /* void *new_address */);
     if ((size + file->offset) > totalsize) {
-        //If file does not have sufficient space
+        //not enough space, needs to enlarge
         size_t new_size = size + file->offset;
         if ((new_ptr = mremap(file->front_ptr, totalsize, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) { //expands the memory mapping here
             perror("mremap failed\n");
@@ -141,9 +141,11 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     return ret_ptr;
 }
 
-void zc_write_end(zc_file* file) {
+void zc_write_end(zc_file* file) { //flushes the changes done in buffer between zc_write_start and zc_write_end
     // To implement
-    if ((msync(file->front_ptr, file->size, MS_SYNC)) == -1) {
+    void* front_ptr = file->front_ptr;
+    size_t size = file->size;
+    if ((msync(front_ptr, size, MS_SYNC)) == -1) {
         perror("msync failed\n");
         exit(1);
     }
@@ -163,10 +165,10 @@ off_t zc_lseek(zc_file* file, long offset, int whence) { //repositioning the fil
         adjusted_offset = offset;
     }
     else if (whence == SEEK_CUR) {
-        adjusted_offset = (file->offset) + offset;
+        adjusted_offset = offset + file->offset;
     }
     else if (whence == SEEK_END) { //SEEK_END: end + offset
-        adjusted_offset = (file->size) + offset;
+        adjusted_offset = offset + file->size;
     }
     else {
         perror("invalid whence\n");
@@ -199,6 +201,5 @@ int zc_copyfile(const char* source, const char* dest) {
     zc_write_end(duplicate_file);
     zc_close(original_file);
     zc_close(duplicate_file);
-
     return 0;
 }

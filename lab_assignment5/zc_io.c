@@ -38,16 +38,16 @@ zc_file* zc_open(const char* path) {
     struct stat buf;
 
     if ((fd = open(path, O_CREAT | O_RDWR, S_IRWXG | S_IRWXO | S_IRWXU)) == -1) {
-        printf("open file failed\n");
+        perror("open file failed\n");
         exit(1);
     }
     if (fstat(fd, &buf) == -1) {
-        printf("get stats failed\n");
+        perror("get stats failed\n");
         exit(1);
     }
     if (buf.st_size != 0) {
         if ((front_ptr = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0)) == MAP_FAILED) {
-            printf("mmap failed\n");
+            perror("mmap failed\n");
             exit(1);
         }
     }
@@ -113,7 +113,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     size_t totalsize = file->size;
     if (totalsize == 0) { //handle new file, create a memory mapping 
         if ((new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0)) == MAP_FAILED) {
-            printf("mmap failed(for newly created file)\n");
+            perror("mmap failed(for newly created file)\n");
             exit(1);
         }
         ftruncate(file->fd, size);
@@ -126,7 +126,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
         //If file does not have sufficient space
         size_t new_size = size + file->offset;
         if ((new_ptr = mremap(file->front_ptr, totalsize, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) { //expands the memory mapping here
-            printf("mremap failed\n");
+            perror("mremap failed\n");
             exit(1);
         }
         ftruncate(file->fd, new_size); //truncate file to specific length(increase it here)
@@ -135,7 +135,7 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     }
 
     ret_ptr = ((char*)file->front_ptr + file->offset);
-    file->offset += size;
+    file->offset = file->offset + size;
     pthread_mutex_unlock(&(file->mutex));
 
     return ret_ptr;
@@ -143,9 +143,9 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
 
 void zc_write_end(zc_file* file) {
     // To implement
-    // msync is for flushing of the changes to file
     if ((msync(file->front_ptr, file->size, MS_SYNC)) == -1) {
-        printf("msync failed with %s\n", strerror(errno));
+        perror("msync failed\n");
+        exit(1);
     }
     pthread_rwlock_unlock(&(file->lock_for_rw));
 }

@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 // The zc_file struct is analogous to the FILE struct that you get from fopen.
 struct zc_file {

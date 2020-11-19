@@ -81,7 +81,7 @@ const char* zc_read_start(zc_file* file, size_t* size) { //returns pointer to bu
     pthread_rwlock_rdlock(&(file->lock_for_rw));
     pthread_mutex_lock(&(file->mutex));
 
-    if (totalsize == file->offset) { //nothing left to read
+    if (totalsize == (size_t)file->offset) { //nothing left to read
         return ptr;
     }
     if (totalsize < (file->offset + (*size))) {
@@ -111,30 +111,30 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     pthread_mutex_lock(&(file->mutex));
 
     size_t totalsize = file->size;
-    if (totalsize != 0 && (size + file->offset) > totalsize) {
-        //If file does not have sufficient space
-        if ((new_ptr = mremap(file->front_ptr, totalsize, (file->offset + size), MREMAP_MAYMOVE)) == MAP_FAILED) {
-            printf("mremap failed\n");
-            exit(1);
-        }
-        ftruncate(file->fd, size + file->offset); //truncate file to specific length(increase it here)
-        file->front_ptr = new_ptr;
-        file->size = (file->offset + size);
-    }
-
-    if (file->size == 0) {
-        //If this is new file created, mmap now
+    if (totalsize == 0) { //handle new file, create a memory mapping 
         if ((new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file->fd, 0)) == MAP_FAILED) {
             printf("mmap failed(for newly created file)\n");
             exit(1);
         }
         ftruncate(file->fd, size);
+        file->size = size;
         file->front_ptr = new_ptr;
-        file->size = (size);
+    }
+    //void* mremap(void* old_address, size_t old_size,
+    //    size_t new_size, int flags, ... /* void *new_address */);
+    if (totalsize != 0 && (size + file->offset) > totalsize) {
+        //If file does not have sufficient space
+        size_t new_size = size + file->offset;
+        if ((new_ptr = mremap(file->front_ptr, totalsize, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) { //expands the memory mapping here
+            printf("mremap failed\n");
+            exit(1);
+        }
+        ftruncate(file->fd, new_size); //truncate file to specific length(increase it here)
+        file->size = new_size;
+        file->front_ptr = new_ptr;
     }
 
     ret_ptr = ((char*)file->front_ptr + file->offset);
-
     file->offset += size;
     pthread_mutex_unlock(&(file->mutex));
 

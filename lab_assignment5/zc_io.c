@@ -1,6 +1,7 @@
 #include "zc_io.h"
 
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -9,7 +10,6 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <pthread.h>
-#include <stdlib.h>
 
 // The zc_file struct is analogous to the FILE struct that you get from fopen.
 struct zc_file {
@@ -122,7 +122,17 @@ char* zc_write_start(zc_file* file, size_t size) { //return ptr to buffer of at 
     }
     //void* mremap(void* old_address, size_t old_size,
     //    size_t new_size, int flags, ... /* void *new_address */);
-
+    if ((size + file->offset) > totalsize) {
+        //If file does not have sufficient space
+        size_t new_size = size + file->offset;
+        if ((new_ptr = mremap(file->front_ptr, totalsize, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) { //expands the memory mapping here
+            perror("mremap failed\n");
+            exit(1);
+        }
+        ftruncate(file->fd, new_size); //truncate file to specific length(increase it here)
+        file->size = new_size;
+        file->front_ptr = new_ptr;
+    }
 
     ret_ptr = ((char*)file->front_ptr + file->offset);
     file->offset = file->offset + size;
@@ -146,26 +156,26 @@ void zc_write_end(zc_file* file) {
 
 off_t zc_lseek(zc_file* file, long offset, int whence) { //repositioning the file offset
     // To implement
-    off_t repositioned_offset;
+    off_t adjusted_offset;
     pthread_rwlock_wrlock(&(file->lock_for_rw));
     pthread_mutex_lock(&(file->mutex));
     if (whence == SEEK_SET) {
-        repositioned_offset = offset;
+        adjusted_offset = offset;
     }
     else if (whence == SEEK_CUR) {
-        repositioned_offset = (file->offset) + offset;
+        adjusted_offset = (file->offset) + offset;
     }
     else if (whence == SEEK_END) { //SEEK_END: end + offset
-        repositioned_offset = (file->size) + offset;
+        adjusted_offset = (file->size) + offset;
     }
     else {
-        perror("invalid whence");
+        perror("invalid whence\n");
         exit(1);
     }
-    file->offset = repositioned_offset;
+    file->offset = adjusted_offset;
     pthread_mutex_unlock(&(file->mutex));
     pthread_rwlock_unlock(&(file->lock_for_rw));
-    return repositioned_offset;
+    return adjusted_offset;
 }
 
 /**************
@@ -174,20 +184,21 @@ off_t zc_lseek(zc_file* file, long offset, int whence) { //repositioning the fil
 
 int zc_copyfile(const char* source, const char* dest) {
     // To implement
-    zc_file* sourceFile = zc_open(source);
-    zc_file* destFile = zc_open(dest);
-    off_t sourceOffset = 0;
-    off_t destOffset = 0;
-
-    zc_read_start(sourceFile, &(sourceFile->size));
-    zc_write_start(destFile, sourceFile->size);
-
-    copy_file_range(sourceFile->fd, &(sourceOffset), destFile->fd, &(destOffset), sourceFile->size, 0);
-
-    zc_read_end(sourceFile);
-    zc_write_end(destFile);
-    zc_close(sourceFile);
-    zc_close(destFile);
+    // open the files first, then 
+    zc_file* original_file = zc_open(source);
+    zc_file* duplicate_file = zc_open(dest);
+    off_t original_offset = 0;
+    off_t duplicate_offset = 0;
+    zc_read_start(original_file, &(original_file->size));
+    zc_write_start(duplicate_file, original_file->size);
+    if (copy_file_range(original_file->fd, &(original_offset), duplicate_file->fd, &(duplicate_offset), original_file->size, 0) == -1) {
+        perror("copy file range error\n");
+        exit(1);
+    }
+    zc_read_end(original_file);
+    zc_write_end(duplicate_file);
+    zc_close(original_file);
+    zc_close(duplicate_file);
 
     return 0;
 }
